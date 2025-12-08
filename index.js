@@ -1,6 +1,6 @@
 const express = require("express");
 const app = express();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const port = process.env.PORT || 3000;
 
 const cors = require("cors");
@@ -23,10 +23,51 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     await client.connect();
-    //Start From here
+    //Creating Database
+    const ticketZoneCollection = client.db("ticketZone").collection("ticket");
 
-
+   
+    //sample post
+    app.post("/ticket", async (req, res) => {
+      const ticket = req.body;
+      const result = await ticketZoneCollection.insertOne(ticket);
+      res.send(result);
+    });
     
+    //sample get
+    app.get("/ticket", async (req, res) => {
+      const result = await ticketZoneCollection.find().toArray();
+      res.send(result);
+    });
+
+    //sample get by id
+    // app.get("/ticket/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const ticket = await ticketZoneCollection.findOne({
+    //     _id: new ObjectId(id),
+    //   });
+    //   res.send(ticket);
+    // });
+
+    //sample update by id
+    // app.patch("/ticket/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const data = { price: 60 };
+    //   const ticket = await ticketZoneCollection.updateOne(
+    //     { _id: new ObjectId(id) },
+    //     { $set: data }
+    //   );
+    //   res.send(ticket);
+    // });
+
+    //sample delete by id
+    // app.delete("/tickets/:id", async (req, res) => {
+    //   const id = req.params.id;
+    //   const result = await ticketZoneCollection.deleteOne({
+    //     _id: new ObjectId(id),
+    //   });
+    //   res.send(result);
+    // });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
@@ -39,7 +80,7 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Ticket Zone Server Running!");
+  res.send("Ticket Zone Server is Running!");
 });
 
 app.listen(port, () => {
