@@ -26,28 +26,35 @@ async function run() {
     //Creating Database
     const ticketZoneCollection = client.db("ticketZone").collection("ticket");
 
-   
     //sample post
     app.post("/ticket", async (req, res) => {
       const ticket = req.body;
       const result = await ticketZoneCollection.insertOne(ticket);
       res.send(result);
     });
-    
-    //sample get
+
+    //  get api
     app.get("/ticket", async (req, res) => {
-      const result = await ticketZoneCollection.find().toArray();
+      const emailFromClient = req.query.vendorEmail
+        //http://localhost:3000/ticket?vendorEmail=alex.morgan@example.com
+       let query = {}
+       if(emailFromClient){
+        query = { vendorEmail : emailFromClient}
+       }
+      const result = await ticketZoneCollection.find(query).toArray();
       res.send(result);
     });
 
-    //sample get by id
-    // app.get("/ticket/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const ticket = await ticketZoneCollection.findOne({
-    //     _id: new ObjectId(id),
-    //   });
-    //   res.send(ticket);
-    // });
+    
+
+    // sample get by id
+    app.get("/ticket/:id", async (req, res) => {
+      const id = req.params.id;
+      const ticket = await ticketZoneCollection.findOne({
+        _id: new ObjectId(id),
+      });
+      res.send(ticket);
+    });
 
     //sample update by id
     // app.patch("/ticket/:id", async (req, res) => {
@@ -61,13 +68,13 @@ async function run() {
     // });
 
     //sample delete by id
-    // app.delete("/tickets/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const result = await ticketZoneCollection.deleteOne({
-    //     _id: new ObjectId(id),
-    //   });
-    //   res.send(result);
-    // });
+    app.delete("/ticket/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await ticketZoneCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
