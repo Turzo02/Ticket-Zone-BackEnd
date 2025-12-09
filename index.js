@@ -35,43 +35,42 @@ async function run() {
       res.send(result);
     });
 
-   // get api
-app.get("/ticket", async (req, res) => {
-    const emailFromClient = req.query.vendorEmail;
-    const transportFilter = req.query.transport; // <--- 1. Get the transport param
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 7;
-    const skip = (page - 1) * limit;
+    // get api
+    app.get("/ticket", async (req, res) => {
+      const emailFromClient = req.query.vendorEmail;
+      const transportFilter = req.query.transport; 
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 7;
+      const skip = (page - 1) * limit;
 
-    let query = {};
+      let query = {};
 
-    // 2. Build the query dynamically
-    if (emailFromClient) {
+      // 2. Build the query dynamically
+      if (emailFromClient) {
         query.vendorEmail = emailFromClient;
-    }
+      }
 
-    // 3. If a transport filter exists (and isn't empty), add it to the query
-    if (transportFilter) {
-        query.transportType = transportFilter; 
-    }
+      if (transportFilter) {
+        query.transportType = transportFilter;
+      }
 
-    // total tickets (using the updated query for correct pagination counts)
-    const total = await ticketZoneCollection.countDocuments(query);
+    
+      const total = await ticketZoneCollection.countDocuments(query);
 
-    // paginated tickets
-    const tickets = await ticketZoneCollection
+      // paginated tickets
+      const tickets = await ticketZoneCollection
         .find(query)
         .skip(skip)
         .limit(limit)
         .toArray();
 
-    res.send({
+      res.send({
         total,
         page,
         limit,
         tickets,
+      });
     });
-});
     // sample get by id
     app.get("/ticket/:id", async (req, res) => {
       const id = req.params.id;
