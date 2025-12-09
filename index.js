@@ -38,28 +38,34 @@ async function run() {
     // get api
     app.get("/ticket", async (req, res) => {
       const emailFromClient = req.query.vendorEmail;
-      const transportFilter = req.query.transport; 
+      const transportFilter = req.query.transport;
+      const sortOrder = req.query.sort;
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 7;
       const skip = (page - 1) * limit;
 
       let query = {};
+      let sortOptions = {};
 
-      // 2. Build the query dynamically
+      // Build filter query
       if (emailFromClient) {
         query.vendorEmail = emailFromClient;
       }
-
       if (transportFilter) {
         query.transportType = transportFilter;
       }
 
-    
+      if (sortOrder === "asc") {
+        sortOptions = { price: 1 };
+      } else if (sortOrder === "desc") {
+        sortOptions = { price: -1 };
+      }
+
       const total = await ticketZoneCollection.countDocuments(query);
 
-      // paginated tickets
       const tickets = await ticketZoneCollection
         .find(query)
+        .sort(sortOptions)
         .skip(skip)
         .limit(limit)
         .toArray();
@@ -71,6 +77,7 @@ async function run() {
         tickets,
       });
     });
+
     // sample get by id
     app.get("/ticket/:id", async (req, res) => {
       const id = req.params.id;
