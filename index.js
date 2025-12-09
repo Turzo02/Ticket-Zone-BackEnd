@@ -25,8 +25,9 @@ async function run() {
     await client.connect();
     //Creating Database
     const ticketZoneCollection = client.db("ticketZone").collection("ticket");
+    const bookingsCollection = client.db("ticketZone").collection("bookings");
 
-    //sample post
+    //Tickets Api
     app.post("/ticket", async (req, res) => {
       const ticket = req.body;
       const result = await ticketZoneCollection.insertOne(ticket);
@@ -73,6 +74,18 @@ async function run() {
       const result = await ticketZoneCollection.deleteOne({
         _id: new ObjectId(id),
       });
+      res.send(result);
+    });
+
+    //Bookings API
+    app.get("/bookings", async (req, res) => {
+      const result = await bookingsCollection.find().toArray();
+      res.send(result);
+    })
+
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const result = await bookingsCollection.insertOne(booking);
       res.send(result);
     });
 
