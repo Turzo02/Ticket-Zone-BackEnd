@@ -26,6 +26,7 @@ async function run() {
     //Creating Database
     const ticketZoneCollection = client.db("ticketZone").collection("ticket");
     const bookingsCollection = client.db("ticketZone").collection("bookings");
+    const usersCollection = client.db("ticketZone").collection("users");
 
     //Tickets Api
     app.post("/ticket", async (req, res) => {
@@ -36,17 +37,33 @@ async function run() {
 
     //  get api
     app.get("/ticket", async (req, res) => {
-      const emailFromClient = req.query.vendorEmail
-        //http://localhost:3000/ticket?vendorEmail=alex.morgan@example.com
-       let query = {}
-       if(emailFromClient){
-        query = { vendorEmail : emailFromClient}
-       }
-      const result = await ticketZoneCollection.find(query).toArray();
-      res.send(result);
-    });
+      const emailFromClient = req.query.vendorEmail;
+      const page = parseInt(req.query.page) || 1; 
+      const limit = parseInt(req.query.limit) || 7; 
+      const skip = (page - 1) * limit; 
 
-    
+      let query = {};
+      if (emailFromClient) {
+        query = { vendorEmail: emailFromClient };
+      }
+
+      // total tickets (for pagination UI)
+      const total = await ticketZoneCollection.countDocuments(query);
+
+      // paginated tickets
+      const tickets = await ticketZoneCollection
+        .find(query)
+        .skip(skip)
+        .limit(limit)
+        .toArray();
+
+      res.send({
+        total,
+        page,
+        limit,
+        tickets,
+      });
+    });
 
     // sample get by id
     app.get("/ticket/:id", async (req, res) => {
@@ -81,11 +98,28 @@ async function run() {
     app.get("/bookings", async (req, res) => {
       const result = await bookingsCollection.find().toArray();
       res.send(result);
-    })
+    });
 
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    //users api
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const email = user.email;
+      const userExist = await usersCollection.findOne({ email: email });
+      if (userExist) {
+        return res.send({ message: "user already exist" });
+      }
+      const result = await usersCollection.insertOne(user);
       res.send(result);
     });
 
