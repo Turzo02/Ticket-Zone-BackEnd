@@ -124,6 +124,11 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = await usersCollection.findOne({ email: email });
+      res.send(user);
+    })
 
     app.post("/users", async (req, res) => {
       const user = req.body;
