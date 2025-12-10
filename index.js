@@ -113,6 +113,14 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/bookings/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await bookingsCollection
+        .find({ userEmail: email })
+        .toArray();
+      res.send(result);
+    });
+
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
       const result = await bookingsCollection.insertOne(booking);
@@ -128,7 +136,7 @@ async function run() {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email: email });
       res.send(user);
-    })
+    });
 
     app.post("/users", async (req, res) => {
       const user = req.body;
