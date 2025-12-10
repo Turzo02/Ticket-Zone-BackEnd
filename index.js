@@ -86,17 +86,18 @@ async function run() {
       });
       res.send(ticket);
     });
+    
 
-    //sample update by id
-    // app.patch("/ticket/:id", async (req, res) => {
-    //   const id = req.params.id;
-    //   const data = { price: 60 };
-    //   const ticket = await ticketZoneCollection.updateOne(
-    //     { _id: new ObjectId(id) },
-    //     { $set: data }
-    //   );
-    //   res.send(ticket);
-    // });
+    // sample update by id
+    app.patch("/ticket/:id", async (req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const result = await ticketZoneCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: status } }
+      );
+      res.send(result);
+    });
 
     //sample delete by id
     app.delete("/ticket/:id", async (req, res) => {
