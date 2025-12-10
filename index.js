@@ -35,7 +35,7 @@ async function run() {
       res.send(result);
     });
 
-    // get api
+    // get api for
     app.get("/ticket", async (req, res) => {
       const emailFromClient = req.query.vendorEmail;
       const transportFilter = req.query.transport;
@@ -43,7 +43,7 @@ async function run() {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 7;
       const skip = (page - 1) * limit;
-
+      const statusFilter = req.query.status;
       let query = {};
       let sortOptions = {};
 
@@ -53,6 +53,9 @@ async function run() {
       }
       if (transportFilter) {
         query.transportType = transportFilter;
+      }
+      if (statusFilter) {
+        query.status = statusFilter;
       }
 
       if (sortOrder === "asc") {
@@ -86,7 +89,6 @@ async function run() {
       });
       res.send(ticket);
     });
-    
 
     // sample update by id
     app.patch("/ticket/:id", async (req, res) => {
