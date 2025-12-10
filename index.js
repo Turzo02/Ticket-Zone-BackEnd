@@ -93,10 +93,10 @@ async function run() {
     // sample update by id
     app.patch("/ticket/:id", async (req, res) => {
       const id = req.params.id;
-      const status = req.body.status;
+      const updateDoc = req.body;
       const result = await ticketZoneCollection.updateOne(
         { _id: new ObjectId(id) },
-        { $set: { status: status } }
+        { $set: updateDoc }
       );
       res.send(result);
     });
