@@ -165,6 +165,17 @@ async function run() {
       const user = await usersCollection.findOne({ email: email });
       res.send(user);
     });
+    
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateDoc = req.body;
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateDoc }
+      );
+      res.send(result);
+    });
+
 
     app.post("/users", async (req, res) => {
       const user = req.body;
