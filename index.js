@@ -58,6 +58,13 @@ async function run() {
         query.status = statusFilter;
       }
 
+      const isAdvertisedParam = req.query.isAdvertised;
+      if (isAdvertisedParam === "true") {
+        query.isAdvertised = true;
+      } else if (isAdvertisedParam === "false") {
+        query.isAdvertised = false;
+      }
+
       if (sortOrder === "asc") {
         sortOptions = { price: 1 };
       } else if (sortOrder === "desc") {
@@ -88,6 +95,14 @@ async function run() {
         _id: new ObjectId(id),
       });
       res.send(ticket);
+    });
+
+    // isAdvertised Count API
+    app.get("/ticket/dashboard/advertised-count", async (req, res) => {
+      const count = await ticketZoneCollection.countDocuments({
+        isAdvertised: true,
+      });
+      res.send({ count: count });
     });
 
     // sample update by id
