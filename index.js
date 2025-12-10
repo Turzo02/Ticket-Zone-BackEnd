@@ -44,10 +44,11 @@ async function run() {
       const limit = parseInt(req.query.limit) || 7;
       const skip = (page - 1) * limit;
       const statusFilter = req.query.status;
+      const fromLocation = req.query.from;
+      const toLocation = req.query.to;
       let query = {};
       let sortOptions = {};
 
-      // Build filter query
       if (emailFromClient) {
         query.vendorEmail = emailFromClient;
       }
@@ -64,12 +65,20 @@ async function run() {
       } else if (isAdvertisedParam === "false") {
         query.isAdvertised = false;
       }
+      if (fromLocation) {
+        query.from = { $regex: fromLocation, $options: 'i' }; 
+    }
+
+    if (toLocation) {
+        query.to = { $regex: toLocation, $options: 'i' };
+    }
 
       if (sortOrder === "asc") {
         sortOptions = { price: 1 };
       } else if (sortOrder === "desc") {
         sortOptions = { price: -1 };
       }
+
 
       const total = await ticketZoneCollection.countDocuments(query);
 
