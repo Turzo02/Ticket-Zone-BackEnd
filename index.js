@@ -236,7 +236,10 @@ async function run() {
         mode: "payment",
         metadata: {
           id: ticketInfo.id,
+          ticketId: ticketInfo.ticketId,
           transactionId: ticketInfo.transactionId,
+          bookingQuantity: ticketInfo.bookingQuantity,
+          quantity: ticketInfo.quantity,
         },
         customer_email: ticketInfo.userEmail,
         success_url: `${process.env.DOMAIN_SITE}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -248,9 +251,12 @@ async function run() {
 
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
-
+ 
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       const id = session.metadata?.id;
+      const ticketId = session.metadata?.ticketId;
+      const bookingQuantity = session.metadata?.bookingQuantity;
+      const quantity = session.metadata?.quantity;
       const transactionId = session.payment_intent;
       if (!id) {
         return res
@@ -265,6 +271,12 @@ async function run() {
       const result = await bookingsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updateDoc }
+      );  
+
+      const finalquantity = quantity - bookingQuantity;
+      const testpatch = await ticketZoneCollection.updateOne(
+        { _id: new ObjectId(ticketId) },
+        { $set: { quantity : finalquantity} }
       );
       res.send(result);
     });
