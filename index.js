@@ -20,6 +20,9 @@ const client = new MongoClient(uri, {
   },
 });
 
+//Stripe
+const stripe = require("stripe")(process.env.STRIPE_KEY);
+
 async function run() {
   try {
     await client.connect();
@@ -28,10 +31,11 @@ async function run() {
     const bookingsCollection = client.db("ticketZone").collection("bookings");
     const usersCollection = client.db("ticketZone").collection("users");
 
-    //🎫Tickets Api
+    // 🎫🎫🎫Tickets Api
     app.post("/ticket", async (req, res) => {
       const ticket = req.body;
-      const result = await ticketZoneCollection.insertOne(ticket);
+      const ticketWithTimestamp = { ...ticket, createdAt: new Date() };
+      const result = await ticketZoneCollection.insertOne(ticketWithTimestamp);
       res.send(result);
     });
 
@@ -48,6 +52,7 @@ async function run() {
       const toLocation = req.query.to;
       let query = {};
       let sortOptions = {};
+      sortOptions = { createdAt: -1 };
 
       if (emailFromClient) {
         query.vendorEmail = emailFromClient;
@@ -66,19 +71,16 @@ async function run() {
         query.isAdvertised = false;
       }
       if (fromLocation) {
-        query.from = { $regex: fromLocation, $options: 'i' }; 
-    }
-
-    if (toLocation) {
-        query.to = { $regex: toLocation, $options: 'i' };
-    }
-
+        query.from = { $regex: fromLocation, $options: "i" };
+      }
+      if (toLocation) {
+        query.to = { $regex: toLocation, $options: "i" };
+      }
       if (sortOrder === "asc") {
         sortOptions = { price: 1 };
       } else if (sortOrder === "desc") {
         sortOptions = { price: -1 };
       }
-
 
       const total = await ticketZoneCollection.countDocuments(query);
 
@@ -134,9 +136,20 @@ async function run() {
       res.send(result);
     });
 
-    //🪪Bookings API
+    // 🪪🪪🪪🪪Bookings API
     app.get("/bookings", async (req, res) => {
-      const result = await bookingsCollection.find().toArray();
+      const result = await bookingsCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    app.get("/bookings/unique/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await bookingsCollection.findOne({
+        _id: new ObjectId(id),
+      });
       res.send(result);
     });
 
@@ -144,13 +157,15 @@ async function run() {
       const email = req.params.email;
       const result = await bookingsCollection
         .find({ userEmail: email })
+        .sort({ createdAt: -1 }) 
         .toArray();
       res.send(result);
     });
 
     app.post("/bookings", async (req, res) => {
       const booking = req.body;
-      const result = await bookingsCollection.insertOne(booking);
+      const bookingWithTimestamp = { ...booking, createdAt: new Date() };
+      const result = await bookingsCollection.insertOne(bookingWithTimestamp);
       res.send(result);
     });
 
@@ -164,17 +179,21 @@ async function run() {
       res.send(result);
     });
 
-    //🙋Users api
+    // 🙋🙋🙋🙋🙋Users api
     app.get("/users", async (req, res) => {
-      const result = await usersCollection.find().toArray();
+      const result = await usersCollection
+        .find()
+        .sort({ createdAt: -1 })
+        .toArray();
       res.send(result);
     });
+
     app.get("/users/:email", async (req, res) => {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email: email });
       res.send(user);
     });
-    
+
     app.patch("/users/:id", async (req, res) => {
       const id = req.params.id;
       const updateDoc = req.body;
@@ -185,7 +204,6 @@ async function run() {
       res.send(result);
     });
 
-
     app.post("/users", async (req, res) => {
       const user = req.body;
       const email = user.email;
@@ -193,8 +211,27 @@ async function run() {
       if (userExist) {
         return res.send({ message: "user already exist" });
       }
-      const result = await usersCollection.insertOne(user);
+      const userWithTimestamp = { ...user, createdAt: new Date() };
+      const result = await usersCollection.insertOne(userWithTimestamp);
       res.send(result);
+    });
+
+
+    // 🌟🌟🌟Payment Related Api
+    app.post("/create-checkout-session", async (req, res) => {
+      const paymentInfo = req.body;
+      const session = await stripe.checkout.sessions.create({
+        line_items: [
+          {
+            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
+            price: "{{PRICE_ID}}",
+            quantity: 1,
+          },
+        ],
+        mode: "payment",
+        success_url: `${process.env.DOMAIN_SITE}?success=true`,
+      });
+      res.redirect(303, session.url);
     });
 
     // Send a ping to confirm a successful connection
