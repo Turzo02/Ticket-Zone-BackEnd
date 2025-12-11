@@ -157,7 +157,7 @@ async function run() {
       const email = req.params.email;
       const result = await bookingsCollection
         .find({ userEmail: email })
-        .sort({ createdAt: -1 }) 
+        .sort({ createdAt: -1 })
         .toArray();
       res.send(result);
     });
@@ -216,23 +216,72 @@ async function run() {
       res.send(result);
     });
 
-
     // 🌟🌟🌟Payment Related Api
-    app.post("/create-checkout-session", async (req, res) => {
-      const paymentInfo = req.body;
+
+    app.post("/payment-checkout-session", async (req, res) => {
+      const ticketInfo = req.body;
       const session = await stripe.checkout.sessions.create({
         line_items: [
           {
-            // Provide the exact Price ID (for example, price_1234) of the product you want to sell
-            price: "{{PRICE_ID}}",
+            price_data: {
+              currency: "usd",
+              unit_amount: ticketInfo.totalPrice * 100,
+              product_data: {
+                name: `Please pay for: ${ticketInfo.title}`,
+              },
+            },
             quantity: 1,
           },
         ],
         mode: "payment",
-        success_url: `${process.env.DOMAIN_SITE}?success=true`,
+        metadata: {
+          ticketId: ticketInfo.ticketId,
+          transactionId: ticketInfo.transactionId,
+        },
+        customer_email: ticketInfo.userEmail,
+        success_url: `${process.env.DOMAIN_SITE}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.DOMAIN_SITE}/payment-failed?session_id={CHECKOUT_SESSION_ID}`,
       });
-      res.redirect(303, session.url);
+
+      res.send({ url: session.url });
     });
+
+    app.patch("/payment-success", async (req, res) => {
+      const sessionId = req.query.session_id;
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        const ticketId = session.metadata?.ticketId;
+        const transactionId = session.payment_intent;
+        if (!ticketId) {
+          return res
+            .status(404)
+            .send({ message: "Ticket ID not found in session metadata." });
+        }
+        const updateDoc = {
+          paymentStatus: "paid", 
+          transactionId: transactionId,
+          paidAt: new Date(),
+        };
+        const result = await bookingsCollection.updateOne(
+          { ticketId: ticketId },
+          { $set: updateDoc }
+        );
+        if (result.matchedCount === 0) {
+          return res
+            .status(404)
+            .send({ message: "No matching booking found to update." });
+        }
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({
+            message: "Failed to process payment status.",
+            error: error.message,
+          });
+      }
+    });
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
