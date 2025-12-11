@@ -235,7 +235,7 @@ async function run() {
         ],
         mode: "payment",
         metadata: {
-          ticketId: ticketInfo.ticketId,
+          id: ticketInfo.id,
           transactionId: ticketInfo.transactionId,
         },
         customer_email: ticketInfo.userEmail,
@@ -248,40 +248,26 @@ async function run() {
 
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
-      try {
-        const session = await stripe.checkout.sessions.retrieve(sessionId);
-        const ticketId = session.metadata?.ticketId;
-        const transactionId = session.payment_intent;
-        if (!ticketId) {
-          return res
-            .status(404)
-            .send({ message: "Ticket ID not found in session metadata." });
-        }
-        const updateDoc = {
-          paymentStatus: "paid", 
-          transactionId: transactionId,
-          paidAt: new Date(),
-        };
-        const result = await bookingsCollection.updateOne(
-          { ticketId: ticketId },
-          { $set: updateDoc }
-        );
-        if (result.matchedCount === 0) {
-          return res
-            .status(404)
-            .send({ message: "No matching booking found to update." });
-        }
-        res.send(result);
-      } catch (error) {
-        res
-          .status(500)
-          .send({
-            message: "Failed to process payment status.",
-            error: error.message,
-          });
-      }
-    });
 
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      const id = session.metadata?.id;
+      const transactionId = session.payment_intent;
+      if (!id) {
+        return res
+          .status(404)
+          .send({ message: "Ticket ID not found in session metadata." });
+      }
+      const updateDoc = {
+        paymentStatus: "paid",
+        transactionId: transactionId,
+        paidAt: new Date(),
+      };
+      const result = await bookingsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateDoc }
+      );
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
