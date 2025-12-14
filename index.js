@@ -153,6 +153,15 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/bookings/revenue/:paymentStatus", async (req, res) => {
+      const paymentStatus = req.params.paymentStatus;
+      const result = await bookingsCollection
+        .find({ paymentStatus: paymentStatus })
+        .toArray();
+      res.send(result);
+      
+    })
+
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const result = await bookingsCollection
