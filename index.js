@@ -10,6 +10,41 @@ require("dotenv").config();
 app.use(cors());
 app.use(express.json());
 
+//firebase
+const admin = require("firebase-admin");
+const serviceAccount = require("./ticket-zone-firebase-adminsdk.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+//....
+const verifyFirebaseToken = async (req, res, next) => {
+  const token = req.headers.authorization;
+  if (!token) {
+    return res
+      .status(403)
+      .send({ error: true, message: "unauthorized access" });
+  }
+  try {
+    const idToken = token.split(" ")[1];
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    console.log("decoded in the token", decoded);
+    req.decoded_email = decoded.email;
+    next();
+
+    //if(email !== decoded.email){
+    // return res
+    //   .status(403)
+    //   .send({ error: true, message: "unauthorized access" });
+    // }
+
+  } catch (error) {
+    return res
+      .status(401)
+      .send({ error: true, message: "forbidden access" });
+  }
+};
+
 const uri = `mongodb+srv://${process.env.TZ_USER}:${process.env.TZ_PASS}@smartproduct.gqn7fwo.mongodb.net/?appName=SmartProducT`;
 
 const client = new MongoClient(uri, {
@@ -40,7 +75,7 @@ async function run() {
     });
 
     // get api for
-    app.get("/ticket", async (req, res) => {
+    app.get("/ticket", verifyFirebaseToken, async (req, res) => {
       const emailFromClient = req.query.vendorEmail;
       const transportFilter = req.query.transport;
       const sortOrder = req.query.sort;
@@ -159,11 +194,15 @@ async function run() {
         .find({ paymentStatus: paymentStatus })
         .toArray();
       res.send(result);
-      
-    })
+    });
 
-    app.get("/bookings/:email", async (req, res) => {
+    app.get("/bookings/:email",verifyFirebaseToken, async (req, res) => {
       const email = req.params.email;
+          if (email !== req.decoded_email) {
+            return res
+              .status(403)
+              .send({ error: true, message: "unauthorized access" });
+          }
       const result = await bookingsCollection
         .find({ userEmail: email })
         .sort({ createdAt: -1 })
@@ -260,7 +299,7 @@ async function run() {
 
     app.patch("/payment-success", async (req, res) => {
       const sessionId = req.query.session_id;
- 
+
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       const id = session.metadata?.id;
       const ticketId = session.metadata?.ticketId;
@@ -280,12 +319,12 @@ async function run() {
       const result = await bookingsCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: updateDoc }
-      );  
+      );
 
       const finalquantity = quantity - bookingQuantity;
       const testpatch = await ticketZoneCollection.updateOne(
         { _id: new ObjectId(ticketId) },
-        { $set: { quantity : finalquantity} }
+        { $set: { quantity: finalquantity } }
       );
       res.send(result);
     });
