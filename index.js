@@ -134,13 +134,21 @@ async function run() {
     });
     
     //get only accepted status ticket
-    app.get("/ticket/status/:status", async (req, res) => {
+    app.get("/ticket/status/:status", verifyFirebaseToken, async (req, res) => {
+      //only vendor has access this
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "You have no access" });
+      }
       const status = req.params.status;
       const tickets = await ticketZoneCollection
         .find({ status: status })
         .toArray();
       res.send(tickets);
-    })
+    });
 
     // sample get by id✅
     app.get("/ticket/:id", verifyFirebaseToken, async (req, res) => {
@@ -191,23 +199,27 @@ async function run() {
     });
 
     //for vendor to update ticket
-    app.patch("/ticket/vendor/:vendorEmail", verifyFirebaseToken, async (req, res) => {
-      //only for vendor to update ticket
-      const emailFromClient = req.decoded_email;
-      const user = await usersCollection.findOne({ email: emailFromClient });
-      if (user.role !== "vendor") {
-        return res
-          .status(403)
-          .send({ error: true, message: "you are not vendor" });
+    app.patch(
+      "/ticket/vendor/:vendorEmail",
+      verifyFirebaseToken,
+      async (req, res) => {
+        //only for vendor to update ticket
+        const emailFromClient = req.decoded_email;
+        const user = await usersCollection.findOne({ email: emailFromClient });
+        if (user.role !== "vendor") {
+          return res
+            .status(403)
+            .send({ error: true, message: "you are not vendor" });
+        }
+        const vendorEmail = req.params.vendorEmail;
+        const updateDoc = req.body;
+        const result = await ticketZoneCollection.updateOne(
+          { vendorEmail: vendorEmail },
+          { $set: updateDoc }
+        );
+        res.send(result);
       }
-      const vendorEmail = req.params.vendorEmail;
-      const updateDoc = req.body;
-      const result = await ticketZoneCollection.updateOne(
-        { vendorEmail : vendorEmail },
-        { $set: updateDoc }
-      );
-      res.send(result);
-    });
+    );
 
     //sample delete by id✅
     app.delete("/ticket/:id", verifyFirebaseToken, async (req, res) => {
