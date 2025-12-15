@@ -132,7 +132,7 @@ async function run() {
         tickets,
       });
     });
-    
+
     //get only accepted status ticket
     app.get("/ticket/status/:status", verifyFirebaseToken, async (req, res) => {
       //only vendor has access this
@@ -146,6 +146,23 @@ async function run() {
       const status = req.params.status;
       const tickets = await ticketZoneCollection
         .find({ status: status })
+        .toArray();
+      res.send(tickets);
+    });
+
+    //Any specific vendor tickets api
+    app.get("/ticket/vendor/:vendorEmail", verifyFirebaseToken, async (req, res) => {
+      //only vendor has access this
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "You have no access" });
+      }
+      const vendorEmail = req.params.vendorEmail;
+      const tickets = await ticketZoneCollection
+        .find({ vendorEmail: vendorEmail })
         .toArray();
       res.send(tickets);
     });
