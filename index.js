@@ -143,22 +143,34 @@ async function run() {
     });
 
     // isAdvertised Count API✅
-    app.get("/ticket/dashboard/advertised-count", async (req, res) => {
-      const count = await ticketZoneCollection.countDocuments({
-        isAdvertised: true,
-      });
-      res.send({ count: count });
-    });
+    app.get(
+      "/ticket/dashboard/advertised-count",
+      verifyFirebaseToken,
+      async (req, res) => {
+        //only admin can get
+        const emailFromClient = req.decoded_email;
+        const user = await usersCollection.findOne({ email: emailFromClient });
+        if (user.role !== "admin") {
+          return res
+            .status(403)
+            .send({ error: true, message: " Tor access Nai Vag" });
+        }
+        const count = await ticketZoneCollection.countDocuments({
+          isAdvertised: true,
+        });
+        res.send({ count: count });
+      }
+    );
 
-    // sample update by id
+    // sample update by id✅
     app.patch("/ticket/:id", verifyFirebaseToken, async (req, res) => {
-      // only vendor can update/get this access
+      //only admin can access this and can accept and reject ticket reques from vendor
       const emailFromClient = req.decoded_email;
       const user = await usersCollection.findOne({ email: emailFromClient });
-      if (user.role !== "vendor") {
+      if (user.role !== "admin") {
         return res
           .status(403)
-          .send({ error: true, message: " Tor access Nai Vag " });
+          .send({ error: true, message: "you are not admin" });
       }
       const id = req.params.id;
       const updateDoc = req.body;
@@ -169,8 +181,35 @@ async function run() {
       res.send(result);
     });
 
-    //sample delete by id
+    //for vendor to update ticket
+    app.patch("/ticket/vendor/:vendorEmail", verifyFirebaseToken, async (req, res) => {
+      //only for vendor to update ticket
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "you are not vendor" });
+      }
+      const vendorEmail = req.params.vendorEmail;
+      const updateDoc = req.body;
+      const result = await ticketZoneCollection.updateOne(
+        { vendorEmail : vendorEmail },
+        { $set: updateDoc }
+      );
+      res.send(result);
+    });
+
+    //sample delete by id✅
     app.delete("/ticket/:id", verifyFirebaseToken, async (req, res) => {
+      //only vendor can delete ticket
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: " Tor access Nai Vag" });
+      }
       const id = req.params.id;
       const result = await ticketZoneCollection.deleteOne({
         _id: new ObjectId(id),
@@ -178,8 +217,16 @@ async function run() {
       res.send(result);
     });
 
-    // 🪪🪪🪪🪪Bookings API
+    // 🪪🪪🪪🪪Bookings API✅
     app.get("/bookings", verifyFirebaseToken, async (req, res) => {
+      //only vendor can see all the requested ticket
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "ja vai Tor access Nai Vag" });
+      }
       const result = await bookingsCollection
         .find()
         .sort({ createdAt: -1 })
@@ -187,6 +234,7 @@ async function run() {
       res.send(result);
     });
 
+    //✅
     app.get("/bookings/unique/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const result = await bookingsCollection.findOne({
@@ -195,10 +243,20 @@ async function run() {
       res.send(result);
     });
 
+    //✅
     app.get(
       "/bookings/revenue/:paymentStatus",
       verifyFirebaseToken,
       async (req, res) => {
+        //only vendor can access this paid or unpaid booking revenue
+        const emailFromClient = req.decoded_email;
+        const user = await usersCollection.findOne({ email: emailFromClient });
+        if (user.role !== "vendor") {
+          return res.status(403).send({
+            error: true,
+            message: "You must be a vendor to get access",
+          });
+        }
         const paymentStatus = req.params.paymentStatus;
         const result = await bookingsCollection
           .find({ paymentStatus: paymentStatus })
@@ -207,7 +265,16 @@ async function run() {
       }
     );
 
-    app.get("/bookings/:email", async (req, res) => {
+    //✅
+    app.get("/bookings/:email", verifyFirebaseToken, async (req, res) => {
+      //only user can access this
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "user") {
+        return res
+          .status(403)
+          .send({ error: true, message: "You must be a user" });
+      }
       const email = req.params.email;
       const result = await bookingsCollection
         .find({ userEmail: email })
@@ -216,14 +283,25 @@ async function run() {
       res.send(result);
     });
 
+    //✅
     app.post("/bookings", verifyFirebaseToken, async (req, res) => {
+      //everyone can access this
       const booking = req.body;
       const bookingWithTimestamp = { ...booking, createdAt: new Date() };
       const result = await bookingsCollection.insertOne(bookingWithTimestamp);
       res.send(result);
     });
 
+    //✅
     app.patch("/bookings/:id", verifyFirebaseToken, async (req, res) => {
+      //only vendor can accept/reject ticket request
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: "you must be a vendor" });
+      }
       const id = req.params.id;
       const status = req.body.status;
       const result = await bookingsCollection.updateOne(
@@ -234,7 +312,15 @@ async function run() {
     });
 
     // 🙋🙋🙋🙋🙋Users api
-    app.get("/users", async (req, res) => {
+    //only Admin can access this UserManagement Panel
+    app.get("/users", verifyFirebaseToken, async (req, res) => {
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "You are not admin" });
+      }
       const result = await usersCollection
         .find()
         .sort({ createdAt: -1 })
@@ -242,13 +328,22 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/users/:email", async (req, res) => {
+    //Free for all users if logged in
+    app.get("/users/:email", verifyFirebaseToken, async (req, res) => {
       const email = req.params.email;
       const user = await usersCollection.findOne({ email: email });
       res.send(user);
     });
 
+    //only admin can make a user admin or vendor
     app.patch("/users/:id", verifyFirebaseToken, async (req, res) => {
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "You are not admin" });
+      }
       const id = req.params.id;
       const updateDoc = req.body;
       const result = await usersCollection.updateOne(
@@ -258,6 +353,7 @@ async function run() {
       res.send(result);
     });
 
+    //Anyone can create a user by login or sign up
     app.post("/users", async (req, res) => {
       const user = req.body;
       const email = user.email;
