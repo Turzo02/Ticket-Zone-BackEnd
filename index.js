@@ -132,6 +132,15 @@ async function run() {
         tickets,
       });
     });
+    
+    //get only accepted status ticket
+    app.get("/ticket/status/:status", async (req, res) => {
+      const status = req.params.status;
+      const tickets = await ticketZoneCollection
+        .find({ status: status })
+        .toArray();
+      res.send(tickets);
+    })
 
     // sample get by id✅
     app.get("/ticket/:id", verifyFirebaseToken, async (req, res) => {
