@@ -17,7 +17,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-//....
+// FirebaseToken middleware
 const verifyFirebaseToken = async (req, res, next) => {
   const token = req.headers.authorization;
   if (!token) {
@@ -28,20 +28,10 @@ const verifyFirebaseToken = async (req, res, next) => {
   try {
     const idToken = token.split(" ")[1];
     const decoded = await admin.auth().verifyIdToken(idToken);
-    console.log("decoded in the token", decoded);
     req.decoded_email = decoded.email;
     next();
-
-    //if(email !== decoded.email){
-    // return res
-    //   .status(403)
-    //   .send({ error: true, message: "unauthorized access" });
-    // }
-
   } catch (error) {
-    return res
-      .status(401)
-      .send({ error: true, message: "forbidden access" });
+    return res.status(401).send({ error: true, message: "forbidden access" });
   }
 };
 
@@ -66,16 +56,25 @@ async function run() {
     const bookingsCollection = client.db("ticketZone").collection("bookings");
     const usersCollection = client.db("ticketZone").collection("users");
 
-    // 🎫🎫🎫Tickets Api
-    app.post("/ticket", async (req, res) => {
+    // 🎫🎫🎫Tickets Api✅
+    app.post("/ticket", verifyFirebaseToken, async (req, res) => {
+      //only vendor can post/add ticket
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: " Tor access Nai Vag" });
+      }
+
       const ticket = req.body;
       const ticketWithTimestamp = { ...ticket, createdAt: new Date() };
       const result = await ticketZoneCollection.insertOne(ticketWithTimestamp);
       res.send(result);
     });
 
-    // get api for
-    app.get("/ticket", verifyFirebaseToken, async (req, res) => {
+    // get api for✅
+    app.get("/ticket", async (req, res) => {
       const emailFromClient = req.query.vendorEmail;
       const transportFilter = req.query.transport;
       const sortOrder = req.query.sort;
@@ -134,8 +133,8 @@ async function run() {
       });
     });
 
-    // sample get by id
-    app.get("/ticket/:id", async (req, res) => {
+    // sample get by id✅
+    app.get("/ticket/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const ticket = await ticketZoneCollection.findOne({
         _id: new ObjectId(id),
@@ -143,7 +142,7 @@ async function run() {
       res.send(ticket);
     });
 
-    // isAdvertised Count API
+    // isAdvertised Count API✅
     app.get("/ticket/dashboard/advertised-count", async (req, res) => {
       const count = await ticketZoneCollection.countDocuments({
         isAdvertised: true,
@@ -152,7 +151,15 @@ async function run() {
     });
 
     // sample update by id
-    app.patch("/ticket/:id", async (req, res) => {
+    app.patch("/ticket/:id", verifyFirebaseToken, async (req, res) => {
+      // only vendor can update/get this access
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "vendor") {
+        return res
+          .status(403)
+          .send({ error: true, message: " Tor access Nai Vag " });
+      }
       const id = req.params.id;
       const updateDoc = req.body;
       const result = await ticketZoneCollection.updateOne(
@@ -163,7 +170,7 @@ async function run() {
     });
 
     //sample delete by id
-    app.delete("/ticket/:id", async (req, res) => {
+    app.delete("/ticket/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const result = await ticketZoneCollection.deleteOne({
         _id: new ObjectId(id),
@@ -172,7 +179,7 @@ async function run() {
     });
 
     // 🪪🪪🪪🪪Bookings API
-    app.get("/bookings", async (req, res) => {
+    app.get("/bookings", verifyFirebaseToken, async (req, res) => {
       const result = await bookingsCollection
         .find()
         .sort({ createdAt: -1 })
@@ -180,7 +187,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/bookings/unique/:id", async (req, res) => {
+    app.get("/bookings/unique/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const result = await bookingsCollection.findOne({
         _id: new ObjectId(id),
@@ -188,21 +195,20 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/bookings/revenue/:paymentStatus", async (req, res) => {
-      const paymentStatus = req.params.paymentStatus;
-      const result = await bookingsCollection
-        .find({ paymentStatus: paymentStatus })
-        .toArray();
-      res.send(result);
-    });
+    app.get(
+      "/bookings/revenue/:paymentStatus",
+      verifyFirebaseToken,
+      async (req, res) => {
+        const paymentStatus = req.params.paymentStatus;
+        const result = await bookingsCollection
+          .find({ paymentStatus: paymentStatus })
+          .toArray();
+        res.send(result);
+      }
+    );
 
-    app.get("/bookings/:email",verifyFirebaseToken, async (req, res) => {
+    app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
-          if (email !== req.decoded_email) {
-            return res
-              .status(403)
-              .send({ error: true, message: "unauthorized access" });
-          }
       const result = await bookingsCollection
         .find({ userEmail: email })
         .sort({ createdAt: -1 })
@@ -210,14 +216,14 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/bookings", async (req, res) => {
+    app.post("/bookings", verifyFirebaseToken, async (req, res) => {
       const booking = req.body;
       const bookingWithTimestamp = { ...booking, createdAt: new Date() };
       const result = await bookingsCollection.insertOne(bookingWithTimestamp);
       res.send(result);
     });
 
-    app.patch("/bookings/:id", async (req, res) => {
+    app.patch("/bookings/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const status = req.body.status;
       const result = await bookingsCollection.updateOne(
@@ -242,7 +248,7 @@ async function run() {
       res.send(user);
     });
 
-    app.patch("/users/:id", async (req, res) => {
+    app.patch("/users/:id", verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const updateDoc = req.body;
       const result = await usersCollection.updateOne(
