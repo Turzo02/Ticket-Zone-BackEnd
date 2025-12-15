@@ -214,6 +214,8 @@ async function run() {
       const result = await ticketZoneCollection.deleteOne({
         _id: new ObjectId(id),
       });
+      //then delete all the bookings for this ticket
+      await bookingsCollection.deleteMany({ ticketId: id });
       res.send(result);
     });
 
