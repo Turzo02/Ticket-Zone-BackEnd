@@ -257,6 +257,21 @@ async function run() {
       res.send(result);
     });
 
+    //delete all tickets of A vendor with vendorEmail ✅
+    app.delete("/ticket/vendor/:vendorEmail", verifyFirebaseToken, async (req, res) => {
+      //only admin has access this api
+      const emailFromClient = req.decoded_email;
+      const user = await usersCollection.findOne({ email: emailFromClient });
+      if (user.role !== "admin") {
+        return res
+          .status(403)
+          .send({ error: true, message: "You have no access" });
+      }
+      const vendorEmail = req.params.vendorEmail;
+      const result = await ticketZoneCollection.deleteMany({ vendorEmail: vendorEmail });
+      res.send(result);
+    });
+
     // 🪪🪪🪪🪪Bookings API✅
     app.get("/bookings", verifyFirebaseToken, async (req, res) => {
       //only vendor can see all the requested ticket
@@ -306,15 +321,7 @@ async function run() {
     );
 
     //✅
-    app.get("/bookings/:email", verifyFirebaseToken, async (req, res) => {
-      //only user can access this
-      const emailFromClient = req.decoded_email;
-      const user = await usersCollection.findOne({ email: emailFromClient });
-      if (user.role !== "user") {
-        return res
-          .status(403)
-          .send({ error: true, message: "You must be a user" });
-      }
+    app.get("/bookings/:email",  async (req, res) => {
       const email = req.params.email;
       const result = await bookingsCollection
         .find({ userEmail: email })
