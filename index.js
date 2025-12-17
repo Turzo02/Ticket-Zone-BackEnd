@@ -53,7 +53,7 @@ const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     //Creating Database
     const ticketZoneCollection = client.db("ticketZone").collection("ticket");
     const bookingsCollection = client.db("ticketZone").collection("bookings");
