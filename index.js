@@ -217,7 +217,7 @@ async function run() {
 
     //for vendor to update ticket
     app.patch(
-      "/ticket/vendor/:vendorEmail",
+      "/ticket/vendor/:id",
       verifyFirebaseToken,
       async (req, res) => {
         //only for vendor to update ticket
@@ -228,10 +228,10 @@ async function run() {
             .status(403)
             .send({ error: true, message: "you are not vendor" });
         }
-        const vendorEmail = req.params.vendorEmail;
+        const id = req.params.id;
         const updateDoc = req.body;
         const result = await ticketZoneCollection.updateOne(
-          { vendorEmail: vendorEmail },
+          { _id: new ObjectId(id) },
           { $set: updateDoc }
         );
         res.send(result);
