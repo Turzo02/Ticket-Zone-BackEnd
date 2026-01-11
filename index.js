@@ -171,7 +171,7 @@ async function run() {
     });
 
     // sample get by id✅
-    app.get("/ticket/:id", verifyFirebaseToken, async (req, res) => {
+    app.get("/ticket/:id", async (req, res) => {
       const id = req.params.id;
       const ticket = await ticketZoneCollection.findOne({
         _id: new ObjectId(id),
