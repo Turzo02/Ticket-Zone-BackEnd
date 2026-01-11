@@ -82,7 +82,7 @@ async function run() {
       const transportFilter = req.query.transport;
       const sortOrder = req.query.sort;
       const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 7;
+      const limit = parseInt(req.query.limit) || 8;
       const skip = (page - 1) * limit;
       const statusFilter = req.query.status;
       const fromLocation = req.query.from;
